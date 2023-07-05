@@ -34,7 +34,7 @@ plt.show()
 # Optimize based on data
 from OptModel import *
 
-results = naiveopt(nprime, [400,50,50], times, np.identity(3), [6, 71, 23])
+results = naiveopt(nprime, [400,50,50], times, np.identity(3), [6, 71, 23], order=1)
 print(results[0])
 
 plot2 = plt.figure(num=2, clear=True)

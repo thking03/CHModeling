@@ -10,4 +10,4 @@ Baseline modeling for clonal hematopoiesis
 - mice sac'ed @ wk 14
 - cisplatin admin from wk. 6-10 -- ignore in initial naive modeling because only endpoints available
 - Have information about TP53 and Tet2 in PB and BM in the format (min, q1, median, q3, max) -- data manually collected and tabulated at `naivedata.csv`, so there is likely some small human error in these values 
-- Data consists of 16 groups consisting of all combinations of (1X OR 2X) AND (TP53 OR Tet2)`
+- Data consists of 16 groups consisting of all combinations of (1X OR 2X) AND (TP53 OR Tet2)

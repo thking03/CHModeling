@@ -5,7 +5,7 @@ Optimize parameters for a numerically-solved differential equation for logistic 
 import numpy as np
 from scipy.integrate import odeint
 
-def naiveopt(dfunc, ics, times, params, target, rate=1, tol=1e-6):
+def naiveopt(dfunc, ics, times, params, target, rate=1, tol=1e-6, order=1):
     """
     optimizes parameters for a multi-species logistic population model with no interactions (interaction matrix is diagonal)
     Args:   dfunc -- function used for ODEINT with 
@@ -19,13 +19,13 @@ def naiveopt(dfunc, ics, times, params, target, rate=1, tol=1e-6):
     """
     losses = [np.inf]
     A0 = params
-    p_target = np.array(target / np.linalg.norm(target))
+    p_target = np.array(target / np.linalg.norm(target, ord=order))
     count = 0
     dloss = 100
     while dloss > tol and count < 1000:
         stepsoln = odeint(dfunc, ics, times, args=(A0,))
         n_stable = np.array(stepsoln[-1])
-        p_vect = n_stable / np.linalg.norm(n_stable)
+        p_vect = n_stable / np.linalg.norm(n_stable, ord=order)
         e_vect = p_target - p_vect
         l_vect = e_vect**2
         for j in range(len(A0)):
