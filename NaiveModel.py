@@ -31,4 +31,23 @@ ax.set(xlabel="time (days)", ylabel="population")
 ax.legend()
 plt.show()
 
-# Create 
+# Optimize based on data
+from OptModel import *
+
+results = naiveopt(nprime, [400,50,50], times, np.identity(3), [6, 71, 23])
+print(results[0])
+
+plot2 = plt.figure(num=2, clear=True)
+optax = plot2.add_subplot(1,1,1)
+optax.plot(times, results[2][:,0], label="WT")
+optax.plot(times, results[2][:,1], label="TP53")
+optax.plot(times, results[2][:,2], label="Tet2")
+optax.set(xlabel="time (days)", ylabel="n (# cells)")
+optax.legend()
+
+plot3 = plt.figure(num=3, clear=True)
+lossax = plot3.add_subplot(1,1,1)
+lossax.plot(range(len(results[1])),results[1], label="losses")
+lossax.set(xlabel="iteration", ylabel="loss: sum of squared errors")
+lossax.set_yscale("log")
+plt.show()
