@@ -17,7 +17,7 @@ def nprime(y, t, Amat):
     return dN
 
 # Test the function to make sure that it returns properly
-times = np.linspace(0,10,10000)
+times = np.linspace(0,15,15000)
 testsoln = odeint(nprime,[350,100,50],times, args=(A0,))
 
 print(np.shape(testsoln))
@@ -31,11 +31,17 @@ ax.set(xlabel="time (days)", ylabel="population")
 ax.legend()
 plt.show()
 
-# Optimize based on data
+# Optimize an example using a single data point to test method
 from OptModel import *
+import time
 
-results = naiveopt(nprime, [400,50,50], times, np.identity(3), [6, 71, 23], order=1)
-print(results[0])
+start = time.time()
+results = naiveopt(nprime, [400,50,50], times, np.identity(3), [6, 71, 23], order=1, tol=1e-8)
+end = time.time()
+
+print("Matrix of rates is: ", results[0])
+print("Final populations are ", results[2][-1], " with a final loss of ", results[1][-1])
+print("Time to optimize: ", end-start, " seconds")
 
 plot2 = plt.figure(num=2, clear=True)
 optax = plot2.add_subplot(1,1,1)
