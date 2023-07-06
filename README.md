@@ -5,6 +5,12 @@ Baseline modeling for clonal hematopoiesis
 - Currently working with estimated data on a naive (simple) logistic model
 - Using Python in `NaiveModel.py` to perform numeric integration
 - `OptModel.py` contains code used to "fit" parameters to the differential model (solved numerically)
+    - The function `naiveopt()` takes in a single data point (equilibrium proportions of the population) and returns optimized parameters, losses, and the final ODE model
+    - The function `naivemultiopt()` takes in multiple data points (equilibrium proportions of the population) and returns optimized parameters and losses
+
+### Notes / TBD
+- Should `naivemultiopt()` use the average of nudges (in dmat) rather than the sum when updating the parameters? -- slower learning rate, but maybe more accurate?
+- Beginning work on new `multiopt()` function which admits the entire nxn matrix A, not just a diagonal matrix --> need to explore how to optimize the interaction coefficients, currently leaning toward something like $\text{sign}({e_{c1}})\sqrt{l_{c1}*l_{c2}}$
 
 ### Approximated Data & conditions from Katharina's slides for naive modeling
 - mice sac'ed @ wk 14

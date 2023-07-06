@@ -83,7 +83,54 @@ def naivemultiopt(dfunc, ics, times, params, targets, rate=1, tol=1e-6, order=1,
         losses.append(totloss)
         count += 1
     if count == 1000:
-        print("Terminated due to max iterations (1000).")
+        print("Terminated due to max iterations ({no}).".format(no=count))
     else:
         print("Terminated at {no} iterations due to reaching error change specified".format(no=count))        
-    return [A0, losses]
+    return [A0, losses[1:]]
+
+def multiopt():
+    """ 
+    Given multiple sets of ICs and targets, will optimize a full matrix of parameters for a multi-species logistic model with a shared carrying capacity.
+    Args:   dfunc -- function used for ODEINT with 
+            ics -- LIST of initial conditions for ODEINT
+            times -- times for ODEINT to evaluate
+            params -- initial guess for interaction matrix
+            targets -- LIST of target population proportions
+            rate -- "learning rate" of the model
+            tol -- tolerance of the model (determines when to stop)
+            order -- order of norms take, set to L1-norm
+            maxiter -- maximum number of steps to take
+    Returns: a list containing the optimized parameter matrix (A0) and a list of losses beginning w/o initial loss of inf. Does not return last step of ODEINT (unlike naiveopt(), which does).
+    """
+    losses = [np.inf]
+    A0 = params
+    targets = [np.array(target / np.linalg.norm(target, ord=order)) for target in targets]
+    count = 0
+    dtotloss = 100
+    while dtotloss > tol and count < maxiter:
+        # for each type of data, run the data
+        # get the loss and error vectors out
+        # iterate across the entire matrix and store each entry update according to the formula given
+        # after passing thru all data, update the entire matrix
+        # calculate total loss and record
+        totloss = 0
+        dmat = np.zeros_like(A0)
+        for i in range(len(targets)):
+            stepsoln = odeint(dfunc, ics[i], times, args=(A0,))
+            n_stable = np.array(stepsoln[-1])
+            p_vect = n_stable / np.linalg.norm(n_stable, ord=order)
+            e_vect = targets[i] - p_vect
+            l_vect = e_vect**2
+            for j in range(len(A0)):
+                for k in range(len(A0)):
+                    dmat[j,k] += 0 # Put formula here
+            totloss += sum(l_vect)
+        A0 += dmat
+        dtotloss = losses[count] - totloss
+        losses.append(totloss)
+        count += 1
+    if count == 1000:
+        print("Terminated due to max iterations ({no}).".format(no=count))
+    else:
+        print("Terminated at {no} iterations due to reaching error change specified".format(no=count))        
+    return [A0, losses[1:]]

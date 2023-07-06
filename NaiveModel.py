@@ -20,8 +20,6 @@ def nprime(y, t, Amat):
 times = np.linspace(0,15,15000)
 testsoln = odeint(nprime,[350,100,50],times, args=(A0,))
 
-print(np.shape(testsoln))
-
 plot1 = plt.figure(num=1, clear=True)
 ax = plot1.add_subplot(1,1,1)
 ax.plot(times, testsoln[:,0], label="Clone 1")
