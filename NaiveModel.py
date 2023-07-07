@@ -55,3 +55,37 @@ lossax.plot(range(len(results[1])),results[1], label="losses")
 lossax.set(xlabel="iteration", ylabel="loss: sum of squared errors")
 lossax.set_yscale("log")
 plt.show()
+
+# Optimize an example using multiple (3) data points to tes the naivemultiopt() method and compare it to the multiopt() method
+
+start = time.time()
+results = naivemultiopt(nprime, [[400,50,50],[450,50,0],[450,0,50]], times, np.identity(3), [[6,71,23], [17,83,0],[15,0,85]],tol=1e-8)
+end = time.time()
+
+print("Matrix of rates is: ", results[0])
+print("Final loss is: ", results[1][-1])
+print("Time to optimize: ", end-start, " seconds")
+
+plot4 = plt.figure(num=4, clear=True)
+multilossax = plot4.add_subplot(1,1,1)
+multilossax.plot(range(len(results[1])),results[1], label="losses")
+multilossax.set(xlabel="iteration", ylabel="loss: sum of squared errors")
+multilossax.set_yscale("log")
+plt.show()
+
+#%% multiopt() version
+start = time.time()
+results = multiopt(nprime, [[400,50,50],[450,50,0],[450,0,50]], times, np.identity(3), [[6,71,23], [17,83,0],[15,0,85]],rate=.05,tol=1e-8, maxiter=5000)
+end = time.time()
+
+print("Matrix of rates is: ", results[0])
+print("Final loss is: ", results[1][-1])
+print("Time to optimize: ", end-start, " seconds")
+
+plot5 = plt.figure(num=5, clear=True)
+fullmultilossax = plot5.add_subplot(1,1,1)
+fullmultilossax.plot(range(len(results[1])),results[1], label="losses")
+fullmultilossax.set(xlabel="iteration", ylabel="loss: sum of squared errors")
+fullmultilossax.set_yscale("log")
+plt.show()
+# %%

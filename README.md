@@ -11,6 +11,8 @@ Baseline modeling for clonal hematopoiesis
 ### Notes / TBD
 - Should `naivemultiopt()` use the average of nudges (in dmat) rather than the sum when updating the parameters? -- slower learning rate, but maybe more accurate?
 - Beginning work on new `multiopt()` function which admits the entire nxn matrix A, not just a diagonal matrix --> need to explore how to optimize the interaction coefficients, currently leaning toward something like $\text{sign}({e_{c1}})\sqrt{l_{c1}*l_{c2}}$
+- `multiopt()` needs a slower learning rate since more things are changing -- initialized to .1 instead of 1
+- Need to investigate an error in `multiopt()` that allows populations that begin at size 0 to spontaneously grow (has to do with how the interaction rates are defined)
 
 ### Approximated Data & conditions from Katharina's slides for naive modeling
 - mice sac'ed @ wk 14
