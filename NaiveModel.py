@@ -16,6 +16,10 @@ def nprime(y, t, Amat):
     dN = list(np.matmul(Amat,y)*(1-sum(y)/ktot))
     return dN
 
+def tnprime(y, t, Amat, truth):
+    dN = list(np.matmul(truth, np.matmul(Amat,y)*(1-sum(y)/ktot)))
+    return dN
+
 # Test the function to make sure that it returns properly
 times = np.linspace(0,15,15000)
 testsoln = odeint(nprime,[350,100,50],times, args=(A0,))
@@ -73,9 +77,9 @@ multilossax.set(xlabel="iteration", ylabel="loss: sum of squared errors")
 multilossax.set_yscale("log")
 plt.show()
 
-#%% multiopt() version
+# multiopt() version
 start = time.time()
-results = multiopt(nprime, [[400,50,50],[450,50,0],[450,0,50]], times, np.identity(3), [[6,71,23], [17,83,0],[15,0,85]],rate=.05,tol=1e-8, maxiter=5000)
+results = multiopt(tnprime, [[400,50,50],[450,50,0],[450,0,50]], times, np.identity(3), [[6,71,23], [17,83,0],[15,0,85]],rate=.05,tol=1e-8, maxiter=5000)
 end = time.time()
 
 print("Matrix of rates is: ", results[0])
@@ -88,4 +92,3 @@ fullmultilossax.plot(range(len(results[1])),results[1], label="losses")
 fullmultilossax.set(xlabel="iteration", ylabel="loss: sum of squared errors")
 fullmultilossax.set_yscale("log")
 plt.show()
-# %%

@@ -107,11 +107,20 @@ def multiopt(dfunc, ics, times, params, targets, rate=0.05, tol=1e-6, order=1, m
     targets = [np.array(target / np.linalg.norm(target, ord=order)) for target in targets]
     count = 0
     dtotloss = 100
+
+    truthmats = []
+    for i in range(len(ics)):
+        tarr = np.identity(len(ics[i]))
+        for j in range(len(ics[i])):
+            if ics[i][j] == 0:
+                tarr[j,j] = 0
+        truthmats.append(tarr)
+
     while abs(dtotloss) > tol and count < maxiter:
         totloss = 0
         dmat = np.zeros_like(A0)
         for i in range(len(targets)):
-            stepsoln = odeint(dfunc, ics[i], times, args=(A0,))
+            stepsoln = odeint(dfunc, ics[i], times, args=(A0,truthmats[i],))
             n_stable = np.array(stepsoln[-1])
             p_vect = n_stable / np.linalg.norm(n_stable, ord=order)
             e_vect = targets[i] - p_vect
