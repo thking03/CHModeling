@@ -1,8 +1,17 @@
 # CHModeling
 Baseline modeling for clonal hematopoiesis
 
-## 7/3/23 - Present
-- Currently working with estimated data on a naive (simple) logistic model
+## 7/10/23 - present :: Competitive Lotka-Volterra w/ shared carryign cap
+- Optimizing a competitive Lotka-Volterra model using data
+    - Model takes the form: $\vec{N}'(t) = \vec{r}\circ\vec{N}(t)\circ(\vec{1}-\frac{\textbf{A}\vec{N}(t)}{K})$
+    - (Optimizable) parameters are stored in the interaction matrix $\textbf{A}$ and the growth-rate vector $\vec{r}$
+    - $\vec{a}\circ\vec{b}$ represents the Hadamard product of the two vectors (element-wise vector multiplication)
+- Using Python in `CLVModel.py` to perform numeric integration, with fitting code still contained in `OptModel.py`
+
+## 7/3/23 - 7/10/23 :: Multivariable logistic w/ shared carrying cap
+- Optimizes a naive (simple) logistic model using data
+    - Model takes the form: $\vec{N}'(t) = \textbf{A}\vec{N}(t)(1-\frac{\vec{1}\cdot\vec{N}(t)}{K})$
+    - (optimizable) parameters are stored in the interaction matrix $\textbf{A}$, where the principal diagonal (self-interaction) regulate growth rates
 - Using Python in `NaiveModel.py` to perform numeric integration
 - `OptModel.py` contains code used to "fit" parameters to the differential model (solved numerically)
     - The function `naiveopt()` takes in a single data point (equilibrium proportions of the population) and returns optimized parameters, losses, and the final ODE model
