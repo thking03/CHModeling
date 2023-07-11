@@ -14,3 +14,5 @@ def LVnprime(y, t, r, Amat):
     vlen = len(r)
     dN = list(r*y*(np.ones(vlen)-np.matmul(Amat,y)/ktot))
     return dN
+
+# Do a test
