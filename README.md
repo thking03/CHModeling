@@ -1,11 +1,12 @@
 # CHModeling
 Baseline modeling for clonal hematopoiesis
 
-## 7/10/23 - present :: Competitive Lotka-Volterra w/ shared carryign cap
+## 7/10/23 - present :: Competitive Lotka-Volterra w/ shared carrying cap
 - Optimizing a competitive Lotka-Volterra model using data
     - Model takes the form: $\vec{N}'(t) = \vec{r}\circ\vec{N}(t)\circ(\vec{1}-\frac{\textbf{A}\vec{N}(t)}{K})$
     - (Optimizable) parameters are stored in the interaction matrix $\textbf{A}$ and the growth-rate vector $\vec{r}$
     - $\vec{a}\circ\vec{b}$ represents the Hadamard product of the two vectors (element-wise vector multiplication)
+    - Because the diagonal values of $\textbf{A}$ are fixed to 1, there are technically still $n^{2}$ parameters, not $n^{2}+n$, for $n$ distinct clones
 - Using Python in `CLVModel.py` to perform numeric integration, with fitting code still contained in `OptModel.py`
 
 ## 7/3/23 - 7/10/23 :: Multivariable logistic w/ shared carrying cap

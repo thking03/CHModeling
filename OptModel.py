@@ -138,3 +138,53 @@ def multiopt(dfunc, ics, times, params, targets, rate=0.05, tol=1e-6, order=1, m
     else:
         print("Terminated at {no} iterations due to reaching error change specified".format(no=count))        
     return [A0, losses[1:]]
+
+def clvopt(dfunc, ics, times, params, targets, rate=0.05, tol=1e-6, order=1, maxiter=1000):
+    """ 
+    Given multiple sets of ICs and targets, will optimize a rate vector and an interaction matrix used in a multispecies competitive lotka volterra model.
+    Args:   dfunc -- function used for ODEINT with 
+            ics -- LIST of initial conditions for ODEINT
+            times -- times for ODEINT to evaluate
+            params -- a list containing [initial guess for rate vector, initial guess for interaction matrix]
+            targets -- LIST of target population proportions
+            rate -- "learning rate" of the model
+            tol -- tolerance of the model (determines when to stop)
+            order -- order of norms take, set to L1-norm
+            maxiter -- maximum number of steps to take
+    Returns: a list containing the optimized parameter matrix (A0) and a list of losses beginning w/o initial loss of inf. Does not return last step of ODEINT (unlike naiveopt(), which does).
+    """
+    losses = [np.inf]
+    r, A0 = params
+    targets = [np.array(target / np.linalg.norm(target, ord=order)) for target in targets]
+    count = 0
+    dtotloss = 100
+
+    while abs(dtotloss) > tol and count < maxiter:
+        totloss = 0
+        dmat = np.zeros_like(A0)
+        dr = np.zeros_like(r)
+        for i in range(len(targets)):
+            stepsoln = odeint(dfunc, ics[i], times, args=(r,A0))
+            n_stable = np.array(stepsoln[-1])
+            p_vect = n_stable / np.linalg.norm(n_stable, ord=order)
+            e_vect = targets[i] - p_vect
+            l_vect = e_vect**2
+            for j in range(len(r)):
+                dr[j] += np.sign(e_vect[j])*l_vect[j]*rate/100
+            for j in range(len(A0)):
+                for k in range(len(A0)):
+                    if j != k:
+                        dmat[j,k] += -np.sign(e_vect[j])*np.sqrt(l_vect[j]*l_vect[k])*rate
+            totloss += sum(l_vect)
+        A0 += dmat
+        r += dr
+        dtotloss = losses[count] - totloss
+        losses.append(totloss)
+        count += 1
+    if count == maxiter:
+        print("Terminated due to max iterations ({no}).".format(no=count))
+    else:
+        print("Terminated at {no} iterations due to reaching error change specified".format(no=count))        
+    return [r, A0, losses[1:]]
+
+odeint()

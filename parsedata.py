@@ -21,13 +21,6 @@ class CHData:
         self.name = name
         self.data = []
 
-    def check_complete(self):
-        condition = 0
-        if condition:
-            self.complete = True
-        else:
-            self.complete = False
-
     def extract_data(self, clsn, line):
         
         if "transplant" in line.keys():
@@ -73,15 +66,11 @@ def readdata(sheet, datadict, sheet_name=0):
 
     for index, row in df.iterrows():
         pID = re.findall("\d{3}[a-zA-Z]", row["ID"])[0].lower()
-        if row["ID"] in datadict:
-            # Raise exceptions when data types don't math
+        if pID in datadict:
             datapt = datadict[pID]
-            if datapt.type != row["transplant"]:
-                print("Warning: Conflicting transplant types for {name}: {t1} and {t2}!".format(name=datapt.name, t1=datapt.type, t2=row["transplant"]))
-            if datapt.treatment != row["treatment"]:
-                print("Warning: Conflicting treatment types for {name}: {t1} and {t2}!".format(name=datapt.name, t1=datapt.treatment, t2=row["treatment"]))
             datapt.extract_data(clsn, row)
         else:
+            print("Making new CHData {}".format(pID))
             datapt = CHData(pID)
             datapt.extract_data(clsn, row)
         datadict[pID] = datapt
