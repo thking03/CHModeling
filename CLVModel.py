@@ -158,7 +158,7 @@ def getstat_CLVopt(datadict, illustrate=True):
             ax.hist(account[:,i], bins=n_bins)
             ax.set(xlabel="value", ylabel="number", title="Distribution of {}".format(param))
             fig.show()
-            fig.savefig("plots/hist_{}.jpg".format(param)) # .jpg because .png was not saving other info
+            fig.savefig("plots/stats/rawhist_{}.jpg".format(param)) # .jpg because .png was not saving other info
 
             # Statistics
 
