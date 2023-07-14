@@ -63,7 +63,7 @@ def FitInTime(params, dfunc, chdata, samplingrate=1000):
     print(totloss)
     return totloss
 
-def do_CLVopt(chdata, verbose=True, savefig=False, savepath="plots"):
+def do_CLVopt(chdata, verbose=True, savefig=False, savepath="plots", getloss=False):
     """
     Runs the optimization routine for the specified datapoint. 
     Args:   
@@ -116,20 +116,68 @@ def do_CLVopt(chdata, verbose=True, savefig=False, savepath="plots"):
         if savefig:
             fig.savefig("{dir}/{ID}.png".format(dir=savepath, ID=chdata.name))
 
+        print("Model ", chdata.name)
+        print("---")
+        print("The loss for this model is ", minobj["fun"])
         print("Rate vector is: ", optr)
         print("Interaction matrix is: ", optA)
 
-    return [optr, optA]
+    returnlist = [optr, optA]
+    if getloss:
+        returnlist.append(minobj["fun"])
+    return returnlist
+
+def getstat_CLVopt(datadict, illustrate=True):
+    """
+    Function that takes in a dictionary of CHData objects, runs the optimizer, and returns information about the parameter distribution of the fits. 
+    Args:
+            datadict: the dictionary to be iterated over
+            illustrate: boolean that determines whether or not to display a histogram of distributions and other statistical charts
+    Returns:
+            a list of lists (as an np.array) [flattened parameter list, loss] for each data point passed in; the parameter list INCLUDES the diagonal ones, which the method will discard later
+    """
+
+    account = []
+    for key in datadict.keys():
+        result = do_CLVopt(datadict[key], verbose=False, getloss=True)
+        paramarr = np.concatenate((result[0].reshape(1,3), result[1])).flatten()
+        account.append(paramarr)
+    account = np.array(account)
+
+    if illustrate:
+        n_bins = 20
+        for i in range(len(account[0])):
+            if i < 3:
+                param = "r{}".format(i+1)
+            else:
+                param = "a{}{}".format((i-3)//3+1, (i-3)%3+1)
+            
+            # Histogram plot
+            fig = plt.figure(num=1, clear=True)
+            ax = fig.add_subplot(1,1,1)
+            ax.hist(account[:,i], bins=n_bins)
+            ax.set(xlabel="value", ylabel="number", title="Distribution of {}".format(param))
+            fig.show()
+            fig.savefig("plots/hist_{}.jpg".format(param)) # .jpg because .png was not saving other info
+
+            # Statistics
+
+    return account
+
 
 # Testing to make sure that methods work properly
 from parsedata import *
 if __name__=='__main__':
     testdict = {}
-    readdata(r"C:\Users\tyler\Downloads\Tet2+TP53_summary.xlsx", testdict, "CW6_BM")
-    readdata(r"C:\Users\tyler\Downloads\Tet2+TP53_summary.xlsx", testdict, "CW8_WBM")
-    readdata(r"C:\Users\tyler\Downloads\Tet2+TP53_summary.xlsx", testdict, "CW6_PB")
-    readdata(r"C:\Users\tyler\Downloads\Tet2+TP53_summary.xlsx", testdict, "CW8_PB")
+    sheet = r"C:\Users\tyler\Downloads\Tet2+TP53_summary.xlsx"
+    readdata(sheet, testdict, "CW6_BM")
+    readdata(sheet, testdict, "CW8_WBM")
+    readdata(sheet, testdict, "CW6_PB")
+    readdata(sheet, testdict, "CW8_PB")
     trialdata = [testdict["258a"], testdict["258b"], testdict["258c"], testdict["259a"],testdict["259c"],testdict["259d"]]
     
+    tottimestart = time.time()
     for data in trialdata:
-        do_CLVopt(data, savefig=True)
+        do_CLVopt(data, savefig=False)
+    tottimeend = time.time()
+    print("In total took {t} seconds to evaluate {d} datapoints.".format(t=tottimeend-tottimestart, d=len(trialdata)))

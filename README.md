@@ -1,5 +1,6 @@
 # CHModeling
-Baseline modeling for clonal hematopoiesis
+A collection of tools used to perform modeling of clonal expansion in murine models of clonal hematopoiesis. The focus of this project is currently a competitive Lotka-Voltera (CLV) model that approximates the cell growth and cell-cell interactions (both within a clonal population and between clonal populations). 
+Currently restricted to working with data of the type collected in the CW6 and CW8 experiments.
 
 ## 7/10/23 - present :: Competitive Lotka-Volterra w/o shared carrying cap
 - Optimizing a competitive Lotka-Volterra model using data
