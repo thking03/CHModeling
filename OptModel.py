@@ -186,5 +186,3 @@ def clvopt(dfunc, ics, times, params, targets, rate=0.05, tol=1e-6, order=1, max
     else:
         print("Terminated at {no} iterations due to reaching error change specified".format(no=count))        
     return [r, A0, losses[1:]]
-
-odeint()
