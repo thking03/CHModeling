@@ -60,8 +60,13 @@ def FitInTime(params, dfunc, chdata, samplingrate=1000):
         pointloss = sum(lvect)
         totloss += pointloss
     
-    print(totloss)
-    return totloss
+    # Penalty function for constrained optimization
+    # growth rates cannot be less than zero or greater than two (see [1], pg. 38 where this is the truncated range of birthrates; also [2]); we use (always positive) ramp functions on either side of an acceptable range to create a "well" in which rates can exist without penalty
+    penalty = 0
+    for rate in rvec:
+        penalty += max(abs(min(rate, 0)),abs(max(rate-2,0)))
+
+    return totloss + penalty
 
 def do_CLVopt(chdata, verbose=True, savefig=False, savepath="plots", getloss=False):
     """
@@ -123,13 +128,15 @@ def do_CLVopt(chdata, verbose=True, savefig=False, savepath="plots", getloss=Fal
         print("Interaction matrix is: ", optA)
 
     returnlist = [optr, optA]
+
     if getloss:
         returnlist.append(minobj["fun"])
+
     return returnlist
 
 def getstat_CLVopt(datadict, illustrate=True):
     """
-    Function that takes in a dictionary of CHData objects, runs the optimizer, and returns information about the parameter distribution of the fits. 
+    Function that takes in a dictionary of CHData objects, runs the optimizer, and returns information about the parameter distribution of the fits. Always will also return information about stats.
     Args:
             datadict: the dictionary to be iterated over
             illustrate: boolean that determines whether or not to display a histogram of distributions and other statistical charts
@@ -141,12 +148,13 @@ def getstat_CLVopt(datadict, illustrate=True):
     for key in datadict.keys():
         result = do_CLVopt(datadict[key], verbose=False, getloss=True)
         paramarr = np.concatenate((result[0].reshape(1,3), result[1])).flatten()
+        paramarr = np.append(paramarr, result[2])
         account.append(paramarr)
     account = np.array(account)
 
     if illustrate:
         n_bins = 20
-        for i in range(len(account[0])):
+        for i in range(len(account[0])-1):
             if i < 3:
                 param = "r{}".format(i+1)
             else:
