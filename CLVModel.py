@@ -2,6 +2,15 @@
 Competitive Lotka-Volterra Model of cell growth
 
 NOTE: OptModel() contains a method to numerically fit equilibrium values given enough time in an ODE solver. This file contains a different method FitInTime() that is used to fit timed experimental data and is designed to be used with scipy.optimize.minimize() as it returns a sum of squares rather than providing its own parameter-optimization method.
+
+List of functions:
+    - LVnprime(): Returns derivative of population vector for a competitive Lotka-Voltera model
+    - FitInTime(): Given parameters, evaluates a system of ODEs across a period of interest and returns loss (including penalty functions)
+    - TreatmentFitInTime(): FitInTime() for non-control data, incorporating multiphase experimental model and multiple parameter sets
+    - do_CLVOpt(): Performs the optimization routine for a control-type CHData point 
+    - do_treat_CLVOpt(): do_CLVOpt() for non-control data, incorporating multiphase experimental model and multiple parameter sets
+    - find_neighbors(): for a non-control data point, explores control data to establish strict optimization constraints for parameters
+    - getstat_CLVOpt(): given a dict of CHData, performs optimization routine on each one, compiles parameter information, and returns information about the distribution of parameters
 """
 
 import numpy as np
@@ -134,6 +143,83 @@ def do_CLVopt(chdata, verbose=True, savefig=False, savepath="plots", getloss=Fal
 
     return returnlist
 
+def do_treat_CLVOpt():
+    return
+
+def find_neighbors(chdata, controldict):
+    """
+    Helper function for treatment optimization (i.e. cisplatin). 
+    
+    Takes in a CHData and compares it to a reference dictionary containing fitted control CHData. NOTE: For now this function assumes Wk. 5 PB data is PRESENT and in the right format (i.e. we only compare 2X to 2X), or we raise an exception.
+
+    Args:
+        chdata: a CHData of non-control type
+        controldict: a dictionary containing control CHData
+    Returns: A list containing the two keys defining the minimal-area rectangle containing the specified CHData at wk 5.
+    """
+    for data in chdata.data:
+        if data.week == 5:
+            target = data.probs
+            break
+        else:
+            target = False
+    if not target:
+        raise Exception("No week 5 data for comparison available in the specified CHData.")
+    
+    log = []
+    for key in controldict.keys():
+        thisdata = controldict[key]
+        for data in thisdata.data:
+            if data.week == 5:
+                compare = data.probs
+                break
+            else:
+                compare = False
+        if not compare:
+            print("Warning: CHData {} does not contain comparable data.".format(key))
+            continue
+        diff = [compare[i+1] - target[i+1] for i in range(len(compare)-1)] # Drop the first datapoint (WT), since for these values it is essentially dependent on the other population proportions (they must sum to 1)
+        dist = np.linalg.norm(diff)
+        log.append([dist, diff, key])
+    
+    log.sort(key=lambda x: x[0])
+
+    start = 0
+    end = len(log)
+    vec1pos = 0
+    vec2pos = False
+    area = np.inf
+    for i in range(end):
+        base = np.array([obs for obs in log[i][1]])
+        signs = np.sign(base)
+        j = 0
+        for compare in log[:i] + log[i+1:end]:
+            compvals = np.array([obs for obs in compare[1]])
+            compsigns = np.sign(compvals)
+            if all(t == 0 for t in signs+compsigns):
+                temparea = abs((base[0]-compvals[0])*(base[1]-compvals[1]))
+                if temparea < area:
+                    print("---")
+                    print(signs)
+                    print(compsigns)
+                    print(temparea)
+                    vec1pos = i
+                    vec2pos = j + (j >= i)
+                    area = temparea
+                    end = j + (j >= i)
+                break
+            j += 1
+        if i == end:
+            break  
+
+    if vec2pos == False:
+        print("ERROR")
+        pass
+
+    keys = [log[vec1pos][-1],log[vec2pos][-1]]
+    print("The minimal rectangle containing {} is given by {} and {}.".format(chdata.name, *keys))
+    return keys
+
 def getstat_CLVopt(datadict, illustrate=True):
     """
     Function that takes in a dictionary of CHData objects, runs the optimizer, and returns information about the parameter distribution of the fits. Always will also return information about stats.
@@ -175,7 +261,7 @@ def getstat_CLVopt(datadict, illustrate=True):
 
 # Testing to make sure that methods work properly
 from parsedata import *
-if __name__=='__main__':
+if __name__!='__main__':
     testdict = {}
     sheet = r"C:\Users\tyler\Downloads\Tet2+TP53_summary.xlsx"
     readdata(sheet, testdict, "CW6_BM")
@@ -188,4 +274,4 @@ if __name__=='__main__':
     for data in trialdata:
         do_CLVopt(data, savefig=False)
     tottimeend = time.time()
-    print("In total took {t} seconds to evaluate {d} datapoints.".format(t=tottimeend-tottimestart, d=len(trialdata)))
+    print("In total took {t} seconds to evaluate {d} datapoints.".format(t=tottimeend-tottimestart, d=len(trialdata))) 
