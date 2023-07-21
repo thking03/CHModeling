@@ -29,7 +29,7 @@ def LVnprime(y, t, r, Amat):
     dN = list(r*y*(np.ones(vlen)-np.matmul(Amat,y)/ktot))
     return dN
 
-def FitInTime(params, dfunc, chdata, samplingrate=1000):
+def FitInTime(params, dfunc, chdata, interaction_const=np.inf, samplingrate=1000):
     """
     Solves an ODE given parameters and then evaluates the results against time-associated data, returning a sum of squares. 
     Args:   
@@ -37,6 +37,7 @@ def FitInTime(params, dfunc, chdata, samplingrate=1000):
             dfunc: ODE to be evaluated
             data: CHData object that contains what data should be fitted.
             samplingrate: how many points (per week) the function should use in ODE solving
+            interaction_const: value for constraints on interactions which will take the form (-interaction_const, +interaction_const)
     Returns: Sum of squared errors from the data.
     """
     if type(chdata) != CHData:
@@ -75,21 +76,33 @@ def FitInTime(params, dfunc, chdata, samplingrate=1000):
     for rate in rvec:
         penalty += max(abs(min(rate, 0)),abs(max(rate-2,0)))
 
+    if interaction_const != np.inf:
+        for aij in aprog:
+            penalty += max(abs(min(rate+interaction_const, 0)),abs(max(rate-interaction_const,0)))
+
     return totloss + penalty
 
-def do_CLVopt(chdata, verbose=True, savefig=False, savepath="plots", getloss=False):
+def do_CLVopt(chdata, verbose=True, savefig=False, savepath="plots", getloss=False, **kwargs):
     """
     Runs the optimization routine for the specified datapoint. 
     Args:   
-            chdata: the datapoint specified, must be CHData
-            verbose: if true, will print runtime and plot data/model in addition to returning the parameters
-            savefig: if true, will save the plots generated if verbose is set to true
-            savepath: allows user to specify where to save plots
+        chdata: the datapoint specified, must be CHData
+        verbose: if true, will print runtime and plot data/model in addition to returning the parameters
+        savefig: if true, will save the plots generated if verbose is set to true
+        savepath: allows user to specify where to save plots
+    Accepted kwargs:
+        interaction_const: optional argument to be passed to FitInTime()
     """
         
     start = time.time()        
     guess0 = np.concatenate((np.ones(3).reshape(1,3), np.zeros((2,3)))).flatten()
-    minobj = minimize(FitInTime, guess0, args=(LVnprime, chdata), method="Nelder-Mead", options={"maxiter":5000, "disp":False, "xatol":5e-6, "fatol":5e-6})
+    base_args = (LVnprime, chdata)
+    if "interaction_const" in kwargs:
+        pass_args = base_args + (kwargs.get("interaction_const"),)
+    else:
+        pass_args = base_args
+
+    minobj = minimize(FitInTime, guess0, args=pass_args, method="Nelder-Mead", options={"maxiter":5000, "disp":False, "xatol":5e-6, "fatol":5e-6})
     end = time.time()
 
     optparams = minobj["x"]
@@ -144,6 +157,11 @@ def do_CLVopt(chdata, verbose=True, savefig=False, savepath="plots", getloss=Fal
     return returnlist
 
 def do_treat_CLVOpt():
+    """
+    Equivalent function to do_CLVOpt() for treatment data incorporating the find_neighbors routine.txt
+
+    Takes in a CHData point and performs the optimization routine
+    """
     return
 
 def find_neighbors(chdata, controldict):
@@ -199,10 +217,6 @@ def find_neighbors(chdata, controldict):
             if all(t == 0 for t in signs+compsigns):
                 temparea = abs((base[0]-compvals[0])*(base[1]-compvals[1]))
                 if temparea < area:
-                    print("---")
-                    print(signs)
-                    print(compsigns)
-                    print(temparea)
                     vec1pos = i
                     vec2pos = j + (j >= i)
                     area = temparea
@@ -220,19 +234,21 @@ def find_neighbors(chdata, controldict):
     print("The minimal rectangle containing {} is given by {} and {}.".format(chdata.name, *keys))
     return keys
 
-def getstat_CLVopt(datadict, illustrate=True):
+def getstat_CLVopt(datadict, illustrate=True, **kwargs):
     """
     Function that takes in a dictionary of CHData objects, runs the optimizer, and returns information about the parameter distribution of the fits. Always will also return information about stats.
     Args:
             datadict: the dictionary to be iterated over
             illustrate: boolean that determines whether or not to display a histogram of distributions and other statistical charts
+    Accepted kwargs:
+            interaction_const: interaction constraint for FitInTime
     Returns:
             a list of lists (as an np.array) [flattened parameter list, loss] for each data point passed in; the parameter list INCLUDES the diagonal ones, which the method will discard later
     """
 
     account = []
     for key in datadict.keys():
-        result = do_CLVopt(datadict[key], verbose=False, getloss=True)
+        result = do_CLVopt(datadict[key], verbose=False, getloss=True, **kwargs)
         paramarr = np.concatenate((result[0].reshape(1,3), result[1])).flatten()
         paramarr = np.append(paramarr, result[2])
         account.append(paramarr)
@@ -261,7 +277,7 @@ def getstat_CLVopt(datadict, illustrate=True):
 
 # Testing to make sure that methods work properly
 from parsedata import *
-if __name__!='__main__':
+if __name__=='__main__':
     testdict = {}
     sheet = r"C:\Users\tyler\Downloads\Tet2+TP53_summary.xlsx"
     readdata(sheet, testdict, "CW6_BM")
@@ -270,8 +286,8 @@ if __name__!='__main__':
     readdata(sheet, testdict, "CW8_PB")
     trialdata = [testdict["258a"], testdict["258b"], testdict["258c"], testdict["259a"],testdict["259c"],testdict["259d"]]
     
-    tottimestart = time.time()
-    for data in trialdata:
-        do_CLVopt(data, savefig=False)
-    tottimeend = time.time()
-    print("In total took {t} seconds to evaluate {d} datapoints.".format(t=tottimeend-tottimestart, d=len(trialdata))) 
+    # tottimestart = time.time()
+    # for data in trialdata:
+    #     do_CLVopt(data, savefig=False)
+    # tottimeend = time.time()
+    # print("In total took {t} seconds to evaluate {d} datapoints.".format(t=tottimeend-tottimestart, d=len(trialdata))) 
