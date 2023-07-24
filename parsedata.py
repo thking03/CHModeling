@@ -6,7 +6,6 @@ NOTE: The default order of data will be [WT, TP53, Tet2]. Additionally, the sort
 
 import pandas as pd
 import re
-from CLVModel import *
 
 class DataProfile:
     def __init__(self):
@@ -57,12 +56,16 @@ class CHData:
         self.data.sort(key = lambda x: x.week)
 
     def optimize(self, **kwargs):
+        from CLVModel import do_CLVopt # Import here to avoid circularity
         # The kwarg that can be passed is interaction_const, which must be spelled as such and is directly passed to do_CLVopt.
-        paramopt = do_CLVopt(self, verbose=False, getloss=True, **kwargs)
-        self.opt = True
-        self.rates = paramopt[0]
-        self.interactions = paramopt[1]
-        self.optloss = paramopt[2]
+        if self.treatment.lower() == "control":
+            paramopt = do_CLVopt(self, verbose=False, getloss=True, **kwargs)
+            self.opt = True
+            self.rates = paramopt[0]
+            self.interactions = paramopt[1]
+            self.optloss = paramopt[2]
+        else:
+            raise Exception("No optimize method for treatment data yet.")
 
 def readdata(sheet, datadict, sheet_name=0):
     df = pd.read_excel(sheet, sheet_name=sheet_name)
