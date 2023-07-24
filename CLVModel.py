@@ -6,7 +6,6 @@ NOTE: OptModel() contains a method to numerically fit equilibrium values given e
 List of functions:
     - LVnprime(): Returns derivative of population vector for a competitive Lotka-Voltera model
     - FitInTime(): Given parameters, evaluates a system of ODEs across a period of interest and returns loss (including penalty functions)
-    - TreatFitInTime(): FitInTime() for non-control data, incorporating multiphase experimental model and multiple parameter sets
     - do_CLVOpt(): Performs the optimization routine for a control-type CHData point 
     - do_treat_CLVOpt(): do_CLVOpt() for non-control data, incorporating multiphase experimental model and multiple parameter sets
     - find_neighbors(): for a non-control data point, explores control data to establish strict optimization constraints for parameters
@@ -82,9 +81,6 @@ def FitInTime(params, dfunc, chdata, interaction_const=np.inf, samplingrate=1000
             penalty += max(abs(min(rate+interaction_const, 0)),abs(max(rate-interaction_const,0)))
 
     return totloss + penalty
-
-def TreatFitInTime():
-    pass
 
 def do_CLVopt(chdata, verbose=True, savefig=False, savepath="plots", getloss=False, **kwargs):
     """
@@ -166,7 +162,7 @@ def do_treat_CLVopt(chdata, verbose=True, savefig=False, savepath="plots", getlo
     """
     Equivalent function to do_CLVOpt() for treatment data incorporating the find_neighbors routine and a two-phase CLV model.
 
-    This function can also optionally take in a dictionary containing control data, which allows constraint identification for the first phase of the CLV model (nontreatment). If no control dictionary is passed (or a pair of neighbors is not identified), then the routine allows the entire search area to be permitted. Interaction constraints can still be set in the same manner as the do_CLVopt function.
+    This function can also optionally take in a dictionary containing control data, which allows constraint identification for the first phase of the CLV model (nontreatment). If no control dictionary is passed (or a pair of neighbors is not identified), then the routine allows the entire search area to be permitted. Interaction constraints can still be set in the same manner as the do_CLVopt function. shortloss() and longloss() are written as inner functions here, 
     
     Args:   
             chdata: the datapoint specified, must be CHData
@@ -202,8 +198,16 @@ def do_treat_CLVopt(chdata, verbose=True, savefig=False, savepath="plots", getlo
                     if i != j:
                         constraints.append([pt1.interactions[i,j], pt2.interactions[i,j]])
     
+    # Assign initial conditions to be accessed by inner functions
+    if "2X" in chdata.type:
+            ics = [400, 50, 50]
+    elif "Tet2" in chdata.type:
+            ics = [450, 0, 50]
+    elif "TP53" in chdata.type:
+            ics = [450, 50, 0]
+
     # inner function to pass into minimize, which incorporates the constraints. basically the same as FitInTime() but for only up to wk. 5.
-    def shortloss(params, dfunc, chdata, constlist=False, interaction_const=False):
+    def shortloss(params, dfunc, constlist=False, interaction_const=False):
         if len(params) != 9:
             raise Exception("9 parameters must be passed into the function as a 1D list.")
         else:
@@ -212,13 +216,6 @@ def do_treat_CLVopt(chdata, verbose=True, savefig=False, savepath="plots", getlo
             for i in range(len(rvec)):
                 aprog = np.insert(aprog, 4*i, 1)
             amat = aprog.reshape((3,3))
-        
-        if "2X" in chdata.type:
-            ics = [400, 50, 50]
-        elif "Tet2" in chdata.type:
-            ics = [450, 0, 50]
-        elif "TP53" in chdata.type:
-            ics = [450, 50, 0]
         
         soln = odeint(dfunc, ics, np.linspace(0, 5, 5*samplingrate), args=(rvec, amat))
         nsoln = soln[samplingrate*(5)-1]
@@ -241,18 +238,70 @@ def do_treat_CLVopt(chdata, verbose=True, savefig=False, savepath="plots", getlo
         # Constraint penalty function
         return loss+penalty
     
-    args = (LVnprime, chdata, constraints)
+    args = (LVnprime, constraints)
     if "interaction_const" in kwargs:
         args = args + (kwargs.get("interaction_const"))
 
     guess0 = np.concatenate((np.ones(3).reshape(1,3), np.zeros((2,3)))).flatten()
     startminobj = minimize(shortloss, guess0, args=args, method="Nelder-Mead", options={"maxiter":5000, "disp":False, "xatol":5e-6, "fatol":5e-6})
-    
-    returnlist = [startminobj['x']]
+
+    rvec1 = np.array(startminobj['x'][:3])
+    aprog1 = np.array(startminobj['x'][3:12])
+    for i in range(len(rvec1)):
+        aprog1 = np.insert(aprog1, 4*i, 1)
+    amat1 = aprog1.reshape((3,3))
+
+    returnlist = [rvec1, amat1]
     if getloss:
         returnlist.append(startminobj['fun'])
+    ics2 = odeint(LVnprime, ics, np.linspace(0, 5, 5*samplingrate), args=(rvec1, amat1))[samplingrate*(5)-1]
 
     # Now that the initial parameters have been optimized, proceed with minimization using TreatFitInTime()... tbw. Rn returns parameters to test.
+    # another inner function to minimize
+    def longloss(params, dfunc, interaction_const=False):
+        if len(params) != 9:
+            raise Exception("9 parameters must be passed into the function as a 1D list.")
+        else:
+            rvec = np.array(params[:3])
+            aprog = np.array(params[3:])
+            for i in range(len(rvec)):
+                aprog = np.insert(aprog, 4*i, 1)
+            amat = aprog.reshape((3,3))
+
+        soln = odeint(dfunc, ics2, np.linspace(6, 14, 14*samplingrate), args=(rvec, amat))
+        
+        totloss = 0
+        for profile in chdata.data[1:]: # Exclude up to week 6
+            nsoln = soln[samplingrate*(profile.week-6)-1] # week 6 --> apparent week 0
+            psoln = nsoln/(sum(nsoln))
+            ptarget = [i/100 for i in profile.probs]
+            lvect = (ptarget - psoln)**2
+            pointloss = sum(lvect)
+            totloss += pointloss
+        
+        penalty = 0
+        for rate in rvec:
+            penalty += max(abs(min(rate, 0)),abs(max(rate-2,0)))
+
+        if interaction_const:
+            for aij in aprog:
+                penalty += max(abs(min(rate+interaction_const, 0)),abs(max(rate-interaction_const,0)))
+
+        return totloss + penalty
+    
+    midminobj = minimize(longloss, startminobj['x'], args=(LVnprime,), method="Nelder-Mead", options={"maxiter":5000, "disp":False, "xatol":5e-6, "fatol":5e-6})
+
+    rvec2 = np.array(midminobj['x'][:3])
+    aprog2 = np.array(midminobj['x'][3:12])
+    for i in range(len(rvec2)):
+        aprog2 = np.insert(aprog2, 4*i, 1)
+    amat2 = aprog2.reshape((3,3))
+
+    returnlist.append(rvec2)
+    returnlist.append(amat2)
+    if getloss:
+        returnlist.append(midminobj['fun'])
+
     return returnlist
 
 def find_neighbors(chdata, controldict):
