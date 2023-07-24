@@ -17,6 +17,7 @@ import numpy as np
 from scipy.integrate import odeint
 import matplotlib.pyplot as plt
 from OptModel import *
+from parsedata import *
 from scipy.optimize import minimize
 import time
 
@@ -40,7 +41,7 @@ def FitInTime(params, dfunc, chdata, interaction_const=np.inf, samplingrate=1000
             interaction_const: value for constraints on interactions which will take the form (-interaction_const, +interaction_const)
     Returns: Sum of squared errors from the data.
     """
-    if type(chdata) != CHData:
+    if type(chdata) != type(CHData()):
         raise Exception("FitInTime() currently requires data passed in as the CHData class.")
     
     if len(params) != 9:
@@ -86,12 +87,14 @@ def do_CLVopt(chdata, verbose=True, savefig=False, savepath="plots", getloss=Fal
     """
     Runs the optimization routine for the specified datapoint. 
     Args:   
-        chdata: the datapoint specified, must be CHData
-        verbose: if true, will print runtime and plot data/model in addition to returning the parameters
-        savefig: if true, will save the plots generated if verbose is set to true
-        savepath: allows user to specify where to save plots
+            chdata: the datapoint specified, must be CHData
+            verbose: if true, will print runtime and plot data/model in addition to returning the parameters
+            savefig: if true, will save the plots generated if verbose is set to true
+            savepath: allows user to specify where to save plots
+            getloss: bool that if set to true will have the function return the loss in adition to parameters
     Accepted kwargs:
-        interaction_const: optional argument to be passed to FitInTime()
+            interaction_const: optional argument to be passed to FitInTime()
+    Returns: A list of parameters (rate vector and interaction matrix), with the loss appended if getloss is set to true
     """
         
     start = time.time()        
@@ -156,13 +159,31 @@ def do_CLVopt(chdata, verbose=True, savefig=False, savepath="plots", getloss=Fal
 
     return returnlist
 
-def do_treat_CLVOpt():
+def do_treat_CLVopt(chdata, verbose=True, savefig=False, savepath="plots", getloss=False, **kwargs):
     """
-    Equivalent function to do_CLVOpt() for treatment data incorporating the find_neighbors routine.txt
+    Equivalent function to do_CLVOpt() for treatment data incorporating the find_neighbors routine and a two-phase CLV model.
 
-    Takes in a CHData point and performs the optimization routine
+    This function can also optionally take in a dictionary containing control data, which allows constraint identification for the first phase of the CLV model (nontreatment). If no control dictionary is passed (or a pair of neighbors is not identified), then the routine allows the entire search area to be permitted. Interaction constraints can still be set in the same manner as the do_CLVopt function.
+    
+    Args:   
+            chdata: the datapoint specified, must be CHData
+            verbose: if true, will print runtime and plot data/model in addition to returning the parameters
+            savefig: if true, will save the plots generated if verbose is set to true
+            savepath: allows user to specify where to save plots
+            getloss: bool that if set to true will have the function return the loss in adition to parameters
+    Accepted kwargs:
+            controldict: optional dictionary of control-type data to be used in a find_neighbors call
+            interaction_const: optional argument to be passed to FitInTime()
+    Returns: A list of parameters (rate vector and interaction matrix), with the loss appended if getloss is set to true
     """
-    return
+    if "controldict" in kwargs:
+        cdict = kwargs.get("controldict")
+        bounds = find_neighbors(chdata, cdict)
+        if bounds[0] != bounds[1]:
+            cdict[bounds[0]].data[0]
+            cdict[bounds[1]].data[0]
+            # Need to do some stuff w/ the data type so we can store parameters & call optimization at-will
+    pass
 
 def find_neighbors(chdata, controldict):
     """
@@ -276,12 +297,11 @@ def getstat_CLVopt(datadict, illustrate=True, **kwargs):
 
 
 # Testing to make sure that methods work properly
-from parsedata import *
 if __name__=='__main__':
     testdict = {}
     sheet = r"C:\Users\tyler\Downloads\Tet2+TP53_summary.xlsx"
-    readdata(sheet, testdict, "CW6_BM")
     readdata(sheet, testdict, "CW8_WBM")
+    readdata(sheet, testdict, "CW6_BM")
     readdata(sheet, testdict, "CW6_PB")
     readdata(sheet, testdict, "CW8_PB")
     trialdata = [testdict["258a"], testdict["258b"], testdict["258c"], testdict["259a"],testdict["259c"],testdict["259d"]]
