@@ -185,6 +185,7 @@ def do_treat_CLVopt(chdata, verbose=True, savefig=False, savepath="plots", getlo
         bounds = find_neighbors(chdata, cdict)
         constraints = []
         if bounds[0] == bounds[1]:
+            print("No pair of neighbors identified; no constraints will be assigned.")
             constraints = False
             # Also might want to throw a warning here
         else:
@@ -200,7 +201,7 @@ def do_treat_CLVopt(chdata, verbose=True, savefig=False, savepath="plots", getlo
                 for j in range(3):
                     if i != j:
                         constraints.append([pt1.interactions[i,j], pt2.interactions[i,j]])
-
+    
     # inner function to pass into minimize, which incorporates the constraints. basically the same as FitInTime() but for only up to wk. 5.
     def shortloss(params, dfunc, chdata, constlist=False, interaction_const=False):
         if len(params) != 9:
@@ -229,9 +230,9 @@ def do_treat_CLVopt(chdata, verbose=True, savefig=False, savepath="plots", getlo
         if constlist:
             for i in range(3):
                 penalty += max(abs(min(rvec[i]-min(constlist[i]), 0)),abs(max(rvec[i]-max(constlist[i]),0)))
-            for i in range(6):
-                penalty += max(abs(min(aprog[i]-min(constlist[i+3]), 0)),abs(max(aprog[i]-max(constlist[i+3]),0)))
-        elif interation_const:
+            # for i in range(6):
+            #     penalty += max(abs(min(aprog[i]-min(constlist[i+3]), 0)),abs(max(aprog[i]-max(constlist[i+3]),0)))
+        elif interaction_const:
             for i in range(3):
                 penalty += max(abs(min(rvec[i], 0)),abs(max(rvec[i]-2,0)))
             for i in range(6):
