@@ -16,6 +16,12 @@ class DataProfile:
         self.type = info[1] # BM or PB
         self.probs = data
 
+    def add_counts(self, num):
+        if self.type == "BM":
+            self.bmcount = num
+        else:
+            raise Exception("Cannot assign BM data to non BM data point.")
+
 class CHData:
     def __init__(self, name):
         self.name = name
@@ -55,6 +61,13 @@ class CHData:
     def sort_data(self):
         self.data.sort(key = lambda x: x.week)
 
+    def update_bm(self):
+        self.sort_data()
+        if self.data[-1].type == "BM":
+            self.data[-1].add_counts()
+        else:
+            raise Exception("Cannot assign BM data to non BM data point.")
+
     def optimize(self, **kwargs):
         from CLVModel import do_CLVopt # Import here to avoid circularity
         # The kwarg that can be passed is interaction_const, which must be spelled as such and is directly passed to do_CLVopt.
@@ -65,7 +78,7 @@ class CHData:
             self.interactions = paramopt[1]
             self.optloss = paramopt[2]
         else:
-            raise Exception("No optimize method for treatment data yet.")
+            raise Exception("No automatic optimize method for treatment data.")
 
 def readdata(sheet, datadict, sheet_name=0):
     df = pd.read_excel(sheet, sheet_name=sheet_name)
@@ -89,6 +102,26 @@ def readdata(sheet, datadict, sheet_name=0):
             datapt = CHData(pID)
             datapt.extract_data(clsn, row)
         datadict[pID] = datapt
-        
-def assign_complete():
-    pass
+
+def add_bm_counts(sheet, datadict, count_sheet=0, flow_sheet=1):
+    df = pd.read_excel(sheet, sheet_name=count_sheet)
+    df_bd = pd.read_excel(sheet, sheet_name=flow_sheet)
+
+    # From df_bd make dict of data + HSC %
+    bd_dict = {}
+    for index, row in df_bd.iterrows():
+        pID = re.findall("\d{3}[a-zA-Z]", row["Sample:"])[0].lower()
+        bd_dict[pID] = row["HSC %"]/100
+
+    for index, row in df.iterrows():
+        pID = re.findall("\d{3}[a-zA-Z]", row["Mouse ID"])[0].lower()
+        if pID not in datadict:
+            print("Warning: will not assign BM counts to non-existing data for {}".format(pID))
+        else:
+            datapt = datadict[pID]
+            if len(datapt.data) != 3:
+                print("Warning: cannot assign BM counts to non-complete data for {}".format(pID))
+            elif pID not in bd_dict:
+                print("Warning: no HSC percent data available from flow for {}".format(pID))
+            else:
+                datapt.data[-1].add_counts(row["x10^6"]*10**6*bd_dict[pID])

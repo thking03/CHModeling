@@ -20,10 +20,9 @@ from parsedata import *
 from scipy.optimize import minimize
 import time
 
-ktot = 30000
-def LVnprime(y, t, r, Amat):
+def LVnprime(y, t, r, Amat, ktot=30000):
     """
-    Returns the derivative at a time-step for the competitive Lotka-Volterra model with carrying capacity ktot defined outside of the function.
+    Returns the derivative at a time-step for the competitive Lotka-Volterra model.
     """
     vlen = len(r)
     dN = list(r*y*(np.ones(vlen)-np.matmul(Amat,y)/ktot))
@@ -70,6 +69,12 @@ def FitInTime(params, dfunc, chdata, interaction_const=np.inf, samplingrate=1000
         pointloss = sum(lvect)
         totloss += pointloss
     
+    if chdata.data[-1].type == "BM":
+        ntarget = [i/100*chdata.data[-1].bmcount for i in chdata.data[-1]]
+        nlvect = (ntarget - soln[-1])**2
+        adjnloss = sum(nlvect)/chdata.data[-1].bmcount**2 # square this to match squared error
+        totloss += adjnloss
+
     # Penalty function for constrained optimization
     # growth rates cannot be less than zero or greater than two (see [1], pg. 38 where this is the truncated range of birthrates; also [2]); we use (always positive) ramp functions on either side of an acceptable range to create a "well" in which rates can exist without penalty
     penalty = 0
@@ -158,7 +163,7 @@ def do_CLVopt(chdata, verbose=True, savefig=False, savepath="plots", getloss=Fal
 
     return returnlist
 
-def do_treat_CLVopt(chdata, verbose=True, savefig=False, savepath="plots", getloss=False, samplingrate=1000, **kwargs):
+def do_treat_CLVopt(chdata, verbose=True, savefig=False, savepath="plots", getloss=False, samplingrate=1000, neg_rate=False, **kwargs):
     """
     Equivalent function to do_CLVOpt() for treatment data incorporating the find_neighbors routine and a two-phase CLV model.
 
@@ -171,6 +176,7 @@ def do_treat_CLVopt(chdata, verbose=True, savefig=False, savepath="plots", getlo
             savepath: allows user to specify where to save plots
             getloss: bool that if set to true will have the function return the loss in adition to parameters
             samplingrate: how many points (per week) the function should use in ODE solving
+            neg_rate: if true, will allow rates from [-2, 2] instead of [0, 2]
     Accepted kwargs:
             controldict: optional dictionary of control-type data to be used in a find_neighbors call
             interaction_const: optional argument to be passed to FitInTime()
@@ -217,7 +223,7 @@ def do_treat_CLVopt(chdata, verbose=True, savefig=False, savepath="plots", getlo
                 aprog = np.insert(aprog, 4*i, 1)
             amat = aprog.reshape((3,3))
         
-        soln = odeint(dfunc, ics, np.linspace(0, 5, 5*samplingrate), args=(rvec, amat))
+        soln = odeint(dfunc, ics, np.linspace(0, 6, 6*samplingrate), args=(rvec, amat))
         nsoln = soln[samplingrate*(5)-1]
         lvect = ([i/100 for i in chdata.data[0].probs] - nsoln/(sum(nsoln)))**2
         loss = sum(lvect)
@@ -254,7 +260,7 @@ def do_treat_CLVopt(chdata, verbose=True, savefig=False, savepath="plots", getlo
     returnlist = [rvec1, amat1]
     if getloss:
         returnlist.append(startminobj['fun'])
-    ics2 = odeint(LVnprime, ics, np.linspace(0, 5, 5*samplingrate), args=(rvec1, amat1))[samplingrate*(5)-1]
+    ics2 = odeint(LVnprime, ics, np.linspace(0, 6, 6*samplingrate), args=(rvec1, amat1))[samplingrate*(5)-1]
 
     # Now that the initial parameters have been optimized, proceed with minimization using TreatFitInTime()... tbw. Rn returns parameters to test.
     # another inner function to minimize
@@ -268,7 +274,7 @@ def do_treat_CLVopt(chdata, verbose=True, savefig=False, savepath="plots", getlo
                 aprog = np.insert(aprog, 4*i, 1)
             amat = aprog.reshape((3,3))
 
-        soln = odeint(dfunc, ics2, np.linspace(6, 14, 14*samplingrate), args=(rvec, amat))
+        soln = odeint(dfunc, ics2, np.linspace(6, 14, 8*samplingrate), args=(rvec, amat))
         
         totloss = 0
         for profile in chdata.data[1:]: # Exclude up to week 6
@@ -281,7 +287,7 @@ def do_treat_CLVopt(chdata, verbose=True, savefig=False, savepath="plots", getlo
         
         penalty = 0
         for rate in rvec:
-            penalty += max(abs(min(rate, 0)),abs(max(rate-2,0)))
+            penalty += max(abs(min(rate+2*neg_rate, 0)),abs(max(rate-2,0))) # In this phase we allow cells to have negative death rate due to treatment if neg_rate is enabled
 
         if interaction_const:
             for aij in aprog:
