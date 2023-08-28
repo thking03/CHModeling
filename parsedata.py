@@ -6,6 +6,7 @@ NOTE: The default order of data will be [WT, TP53, Tet2]. Additionally, the sort
 
 import pandas as pd
 import re
+import time
 
 class DataProfile:
     def __init__(self):
@@ -66,19 +67,25 @@ class CHData:
         if self.data[-1].type == "BM":
             self.data[-1].add_counts()
         else:
-            raise Exception("Cannot assign BM data to non BM data point.")
+            print("Cannot assign BM data to non BM data point {} at week {}".format(self.name, self.data[-1].week))
 
     def optimize(self, **kwargs):
         from CLVModel import do_CLVopt # Import here to avoid circularity
         # The kwarg that can be passed is interaction_const, which must be spelled as such and is directly passed to do_CLVopt.
         if self.treatment.lower() == "control":
+            t1 = time.time()
             paramopt = do_CLVopt(self, verbose=False, getloss=True, **kwargs)
+            t2 = time.time()
             self.opt = True
             self.rates = paramopt[0]
             self.interactions = paramopt[1]
-            self.optloss = paramopt[2]
+            self.runinfo = {
+                "time" : time.strftime("%T %D %Z"),
+                "runtime" : t2-t1,
+                "loss" : paramopt[2]
+            }
         else:
-            raise Exception("No automatic optimize method for treatment data.")
+            print("Warning: no automatic optimize method for treatment data on {}".format(self.name))
 
 def readdata(sheet, datadict, sheet_name=0):
     df = pd.read_excel(sheet, sheet_name=sheet_name)
@@ -110,11 +117,11 @@ def add_bm_counts(sheet, datadict, count_sheet=0, flow_sheet=1):
     # From df_bd make dict of data + HSC %
     bd_dict = {}
     for index, row in df_bd.iterrows():
-        pID = re.findall("\d{3}[a-zA-Z]", row["Sample:"])[0].lower()
+        pID = re.findall("\d{3}[a-zA-Z]", row["ID"])[0].lower()
         bd_dict[pID] = row["HSC %"]/100
 
     for index, row in df.iterrows():
-        pID = re.findall("\d{3}[a-zA-Z]", row["Mouse ID"])[0].lower()
+        pID = re.findall("\d{3}[a-zA-Z]", row["ID"])[0].lower()
         if pID not in datadict:
             print("Warning: will not assign BM counts to non-existing data for {}".format(pID))
         else:
@@ -124,4 +131,10 @@ def add_bm_counts(sheet, datadict, count_sheet=0, flow_sheet=1):
             elif pID not in bd_dict:
                 print("Warning: no HSC percent data available from flow for {}".format(pID))
             else:
-                datapt.data[-1].add_counts(row["x10^6"]*10**6*bd_dict[pID])
+                datapt.data[-1].add_counts(row["count"]*10**6*bd_dict[pID])
+
+def get_controls():
+    pass
+
+def get_treatments():
+    pass

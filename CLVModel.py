@@ -69,8 +69,8 @@ def FitInTime(params, dfunc, chdata, interaction_const=np.inf, samplingrate=1000
         pointloss = sum(lvect)
         totloss += pointloss
     
-    if chdata.data[-1].type == "BM":
-        ntarget = [i/100*chdata.data[-1].bmcount for i in chdata.data[-1]]
+    if chdata.data[-1].type == "BM" and hasattr(chdata.data[-1], "bmcount"):
+        ntarget = [i/100*chdata.data[-1].bmcount for i in chdata.data[-1].probs]
         nlvect = (ntarget - soln[-1])**2
         adjnloss = sum(nlvect)/chdata.data[-1].bmcount**2 # square this to match squared error
         totloss += adjnloss
@@ -203,6 +203,10 @@ def do_treat_CLVopt(chdata, verbose=True, savefig=False, savepath="plots", getlo
                 for j in range(3):
                     if i != j:
                         constraints.append([pt1.interactions[i,j], pt2.interactions[i,j]])
+                        print("Constraints assigned")
+    else:
+        constraints = False
+        print("No constraints assigned")
     
     # Assign initial conditions to be accessed by inner functions
     if "2X" in chdata.type:
@@ -419,20 +423,3 @@ def getstat_CLVopt(datadict, illustrate=True, **kwargs):
             # Statistics
 
     return account
-
-
-# Testing to make sure that methods work properly
-if __name__=='__main__':
-    testdict = {}
-    sheet = r"C:\Users\tyler\Downloads\Tet2+TP53_summary.xlsx"
-    readdata(sheet, testdict, "CW8_WBM")
-    readdata(sheet, testdict, "CW6_BM")
-    readdata(sheet, testdict, "CW6_PB")
-    readdata(sheet, testdict, "CW8_PB")
-    trialdata = [testdict["258a"], testdict["258b"], testdict["258c"], testdict["259a"],testdict["259c"],testdict["259d"]]
-    
-    # tottimestart = time.time()
-    # for data in trialdata:
-    #     do_CLVopt(data, savefig=False)
-    # tottimeend = time.time()
-    # print("In total took {t} seconds to evaluate {d} datapoints.".format(t=tottimeend-tottimestart, d=len(trialdata))) 
